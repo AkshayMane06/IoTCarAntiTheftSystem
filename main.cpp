@@ -9,7 +9,6 @@
 
 #include "mbed.h"
 #include "FXOS8700Q.h"
-#include "math.h"
 #include "ESP8266.h"
 
 Serial pc(USBTX,USBRX);                     //Serial Communication with PC
@@ -25,8 +24,9 @@ DigitalOut led_z( LED3 );
 DigitalOut buzzer(D2);
 DigitalIn vibMotor(D4); 
 AnalogIn level(A0);
+int bflag= 0;
 
-float lowerthreshold = 400;             // level of submersion of the sensor plate(value to be set using the sensing)
+float lowerthreshold = 0.3;             // level of submersion of the sensor plate(value to be set using the sensing)
 int on = 1, off = 0;
 
 int main(void)
@@ -38,12 +38,23 @@ int main(void)
     acc.enable();
     
     while (true) {
-
+        float analogValue = level.read();
         //Get Data
         acc.getX( x );
         acc.getY( y );
         acc.getZ( z );
 
+        if(bflag==1)
+        { 
+            buzzer = on; 
+            wait_us(5000); 
+            buzzer = off; 
+            wait_us(5000);
+            bflag=0;
+        }
+        else {
+			buzzer = off;
+        }
         // LED 
         if ( x > 0 )
             led_x = 1;
@@ -59,7 +70,7 @@ int main(void)
             led_x = 1;
             led_y = 0;
             led_z = 0;
-            //printf("Car is tilted");
+            printf("\nCar is lifted\n\r");
             buzzer = on; 
             wait_us(50000); 
             buzzer = off; 
@@ -78,13 +89,13 @@ int main(void)
         wait( 0.5 );
 
         if (vibMotor == 1){
-            printf("Car intrusion detected");
+            printf("\nCar intrusion detected");
 		strcpy(snd,"1");
 		wifi.SendCMD(snd);
         	// Wait for 1 second before sending again
-       	 wait(1);
+       	    wait(1);
             buzzer = on; 
-            wait_us(50000000);
+            wait_us(50000);
 
             buzzer = off; 
             wait_us(50000);
@@ -93,14 +104,18 @@ int main(void)
         if (level>= lowerthreshold)
         {
             printf("\n Alert sent! The vehicle is submerging in the water!");
+            pc.printf("Analog Value: %.2f\n", analogValue);
             strcpy(snd,"2");
-		wifi.SendCMD(snd);
+			wifi.SendCMD(snd);
         	// Wait for 1 second before sending again
-       	 wait(1);
+       	 	wait(1);
             buzzer = on; 
-            wait_us(5000); 
+            wait_us(50000); 
             buzzer = off; 
-            wait_us(5000);
+            wait_us(50000);
+        }
+        else {
+         buzzer = off;
         }
 
     }
